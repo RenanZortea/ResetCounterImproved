@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Release" />
+    <Platform Name="x64" />
+  </Configurations>
+  <Project Path="../../../../../../Desktop/ResetCounterPlugin/ResetCounterPlugin/ResetCounterPlugin.vcxproj" Id="ded963c7-6878-47f9-9e5b-b0a24c3f5aea" />
+</Solution>

@@ -1,0 +1,23 @@
+# Build intermediates & output
+build/
+.intermediates/
+x64/
+[Dd]ebug/
+[Rr]elease/
+plugins/
+*.obj
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.dll
+
+# Visual Studio
+.vs/
+*.vcxproj.user
+
+# Editor / tooling
+.claude/
+
+# Backups
+*.bak
