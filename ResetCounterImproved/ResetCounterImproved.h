@@ -33,6 +33,10 @@ private:
     void resetCounter();                      // manual + internal zero
     void render(CanvasWrapper canvas);        // HUD
 
+    void toggleAirDribble();                  // bind: arm (1st press) / stop (2nd press)
+    void updateAirDribble();                  // per-tick air-dribble state machine
+    void bankAirBest();                       // store the current time if it's a new best
+
     // ---- state ----
     int   resetCount    = 0;      // "Resets:" — wheels-on-ball count in this chain
     float lastCarHeight = 0.0f;   // car center Z at the last reset
@@ -55,4 +59,12 @@ private:
     float snapTotalInterval = 0.0f;
     int   snapIntervalCount = 0;
     std::chrono::steady_clock::time_point landingTime; // when the run landed
+
+    // ---- air-dribble timer ----
+    // Bind arms an attempt; the timer starts when the ball passes half height and
+    // stops when the ball hits the ground. The final time stays until re-armed.
+    enum class AirState { Idle, Armed, Counting, Finished };
+    AirState airState   = AirState::Idle;
+    float    airElapsed = 0.0f;    // current/last attempt time (seconds)
+    std::chrono::steady_clock::time_point airStart; // when counting began
 };

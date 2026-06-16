@@ -53,6 +53,15 @@ static const char* CV_SHOW_MESSAGE     = "resetcounter_message_enabled";
 // Personal best: highest reset count reached (persisted via cvar).
 static const char* CV_PB               = "resetcounter_pb";
 
+// Air-dribble timer: bind-driven stopwatch (off by default, independent feature).
+static const char* CV_AIR_ENABLED      = "resetcounter_airdribble_enabled";
+static const char* CV_AIR_POSX         = "resetcounter_airdribble_posx";
+static const char* CV_AIR_POSY         = "resetcounter_airdribble_posy";
+static const char* CV_AIR_SIZE         = "resetcounter_airdribble_size";
+static const char* CV_AIR_STARTH       = "resetcounter_airdribble_startheight";
+static const char* CV_AIR_BEST         = "resetcounter_airdribble_best";
+static const char* CMD_AIR             = "resetcounter_airdribble";  // bindable
+
 // Custom free text overlay (for content creators / clips). Independent position.
 static const char* CV_CUSTOMENABLED    = "resetcounter_customtext_enabled";
 static const char* CV_CUSTOMTEXT       = "resetcounter_customtext";
@@ -118,6 +127,13 @@ void ResetCounterImproved::onLoad()
     cvarManager->registerCvar(CV_HEIGHTBALL,    "1", "Show the ball's height",      true, true, 0, true, 1);
     cvarManager->registerCvar(CV_HEIGHTCAR,     "0", "Show the car's height",       true, true, 0, true, 1);
 
+    cvarManager->registerCvar(CV_AIR_ENABLED,   "0", "Enable the air dribble timer", true, true, 0, true, 1);
+    cvarManager->registerCvar(CV_AIR_POSX,      "900", "Air dribble timer position X");
+    cvarManager->registerCvar(CV_AIR_POSY,      "300", "Air dribble timer position Y");
+    cvarManager->registerCvar(CV_AIR_SIZE,      "3",   "Air dribble timer text size");
+    cvarManager->registerCvar(CV_AIR_STARTH,    "12",  "Ball height % (0-100) that starts the timer", true, true, 0, true, 100);
+    cvarManager->registerCvar(CV_AIR_BEST,      "0",   "Best air dribble time (seconds)");
+
     // manual reset command (bindable)
     cvarManager->registerNotifier(CMD_RESET,
         [this](std::vector<std::string> args) {
@@ -125,6 +141,12 @@ void ResetCounterImproved::onLoad()
             cvarManager->log("Reset counter zeroed.");
         },
         "Resets the freeplay reset counter to zero", PERMISSION_ALL);
+
+    // air-dribble timer: 1st press arms / 2nd press stops (bind G resetcounter_airdribble)
+    cvarManager->registerNotifier(CMD_AIR,
+        [this](std::vector<std::string> args) { toggleAirDribble(); },
+        "Air dribble timer: press to start, press again to stop",
+        PERMISSION_ALL);
 
     // per-tick poll: SetVehicleInput fires every physics tick while you have a car
     gameWrapper->HookEvent("Function TAGame.Car_TA.SetVehicleInput",
@@ -152,6 +174,10 @@ void ResetCounterImproved::onTick(std::string)
 {
     if (!gameWrapper->IsInFreeplay() && !gameWrapper->IsInCustomTraining())
         return;
+
+    // Air-dribble timer runs independently of the reset counter (own enable,
+    // doesn't need the local car), so update it before the car-gated logic.
+    updateAirDribble();
 
     CarWrapper car = gameWrapper->GetLocalCar();
     if (car.IsNull())
@@ -281,46 +307,99 @@ void ResetCounterImproved::resetCounter()
 }
 
 // ---------------------------------------------------------------------------
+// air-dribble timer
+// ---------------------------------------------------------------------------
+// Record the just-ended run as the best if it beat the stored value.
+void ResetCounterImproved::bankAirBest()
+{
+    CVarWrapper best = cvarManager->getCvar(CV_AIR_BEST);
+    if (best && airElapsed > best.getFloatValue())
+        best.setValue(airElapsed);
+}
+
+void ResetCounterImproved::toggleAirDribble()
+{
+    CVarWrapper en = cvarManager->getCvar(CV_AIR_ENABLED);
+    if (!en || !en.getBoolValue())
+        return;                     // feature off -> ignore the bind
+
+    if (airState == AirState::Armed || airState == AirState::Counting)
+    {
+        // 2nd press -> stop. Freeze the current time and bank it as best.
+        if (airState == AirState::Counting)
+            bankAirBest();
+        airState = AirState::Finished;
+    }
+    else
+    {
+        // 1st press -> arm. Counting begins when the ball passes the threshold.
+        airState   = AirState::Armed;
+        airElapsed = 0.0f;
+    }
+}
+
+void ResetCounterImproved::updateAirDribble()
+{
+    CVarWrapper en = cvarManager->getCvar(CV_AIR_ENABLED);
+    if (!en || !en.getBoolValue())
+        return;
+
+    // Only the armed/counting states need ball polling; idle/finished are static.
+    if (airState != AirState::Armed && airState != AirState::Counting)
+        return;
+
+    ServerWrapper server = gameWrapper->GetCurrentGameState();
+    if (server.IsNull()) return;
+    BallWrapper ball = server.GetBall();
+    if (ball.IsNull()) return;
+    float z = ball.GetLocation().Z;
+
+    // Start threshold is a 0-100 height percentage (0 = ground, 100 = ceiling),
+    // same scale as the HUD height. Compare against the ball's current height %.
+    CVarWrapper sh = cvarManager->getCvar(CV_AIR_STARTH);
+    float startPct = sh ? sh.getFloatValue() : 50.0f;
+    float ballPct  = toHeightPct(z, BALL_RADIUS, CEILING_Z - BALL_RADIUS);
+
+    if (airState == AirState::Armed)
+    {
+        // Start the clock once the ball climbs past the start height.
+        if (ballPct >= startPct)
+        {
+            airState = AirState::Counting;
+            airStart = std::chrono::steady_clock::now();
+            airElapsed = 0.0f;
+        }
+    }
+    else // Counting
+    {
+        airElapsed = std::chrono::duration<float>(
+            std::chrono::steady_clock::now() - airStart).count();
+
+        // Ball dropped to the floor -> bank the run and re-arm (restart), so the
+        // next time it crosses the threshold the timer counts fresh from zero.
+        if (z <= BALL_RADIUS + 5.0f)
+        {
+            bankAirBest();
+            airState   = AirState::Armed;
+            airElapsed = 0.0f;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // HUD
 // ---------------------------------------------------------------------------
 void ResetCounterImproved::render(CanvasWrapper canvas)
 {
-    CVarWrapper enabledCvar = cvarManager->getCvar(CV_ENABLED);
-    if (!enabledCvar) return;
-    if (!enabledCvar.getBoolValue()) return;
-
     if (!gameWrapper->IsInFreeplay() && !gameWrapper->IsInCustomTraining())
         return;
 
-    CVarWrapper posXCvar  = cvarManager->getCvar(CV_POSX);
-    CVarWrapper posYCvar  = cvarManager->getCvar(CV_POSY);
-    CVarWrapper sizeCvar  = cvarManager->getCvar(CV_TEXTSIZE);
-    CVarWrapper shadCvar  = cvarManager->getCvar(CV_DROPSHADOWS);
-    CVarWrapper decCvar   = cvarManager->getCvar(CV_HEIGHTDECIMAL);
-    CVarWrapper colCvar   = cvarManager->getCvar(CV_COLOR);
-    CVarWrapper showResetsCvar = cvarManager->getCvar(CV_SHOWRESETS);
-    CVarWrapper showHeightCvar = cvarManager->getCvar(CV_SHOWHEIGHT);
-    CVarWrapper showTimeCvar   = cvarManager->getCvar(CV_SHOWTIME);
-    CVarWrapper showAvgCvar    = cvarManager->getCvar(CV_SHOWAVGTIME);
-    CVarWrapper heightBallCvar = cvarManager->getCvar(CV_HEIGHTBALL);
-    CVarWrapper heightCarCvar  = cvarManager->getCvar(CV_HEIGHTCAR);
-    if (!posXCvar || !posYCvar || !sizeCvar || !shadCvar || !decCvar || !colCvar ||
-        !showResetsCvar || !showHeightCvar || !showTimeCvar || !showAvgCvar ||
-        !heightBallCvar || !heightCarCvar)
-        return;
-
-    float posX     = posXCvar.getFloatValue();
-    float posY     = posYCvar.getFloatValue();
-    float textSize = sizeCvar.getFloatValue();
-    bool  shadow   = shadCvar.getBoolValue();
-    bool  heightDecimal = decCvar.getBoolValue();
-    LinearColor col = colCvar.getColorValue();
-    bool  showResets = showResetsCvar.getBoolValue();
-    bool  showHeight = showHeightCvar.getBoolValue();
-    bool  showTime   = showTimeCvar.getBoolValue();
-    bool  showAvg    = showAvgCvar.getBoolValue();
-    bool  heightBall = heightBallCvar.getBoolValue();
-    bool  heightCar  = heightCarCvar.getBoolValue();
+    // Shared style cvars, used by both the air-dribble timer and the counter.
+    CVarWrapper shadCvar = cvarManager->getCvar(CV_DROPSHADOWS);
+    CVarWrapper colCvar  = cvarManager->getCvar(CV_COLOR);
+    if (!shadCvar || !colCvar) return;
+    bool        shadow = shadCvar.getBoolValue();
+    LinearColor col    = colCvar.getColorValue();
 
     // Draw one string at an explicit position/size with an 8-direction black
     // outline (crisper / more like RL's HUD text than a single drop shadow).
@@ -340,6 +419,64 @@ void ResetCounterImproved::render(CanvasWrapper canvas)
         canvas.SetPosition(Vector2F{ x, yy });
         canvas.DrawString(text, size, size, false);
     };
+
+    // ---- air-dribble timer (independent feature, own enable + position) ----
+    CVarWrapper airEnCvar = cvarManager->getCvar(CV_AIR_ENABLED);
+    if (airEnCvar && airEnCvar.getBoolValue()) {
+        CVarWrapper apx = cvarManager->getCvar(CV_AIR_POSX);
+        CVarWrapper apy = cvarManager->getCvar(CV_AIR_POSY);
+        CVarWrapper asz = cvarManager->getCvar(CV_AIR_SIZE);
+        CVarWrapper bestCvar = cvarManager->getCvar(CV_AIR_BEST);
+        if (apx && apy && asz) {
+            float ax = apx.getFloatValue();
+            float ay = apy.getFloatValue();
+            float asize = asz.getFloatValue();
+
+            std::ostringstream airLine;
+            airLine << "Air dribble: ";
+            if (airState == AirState::Armed)
+                airLine << "ready";
+            else
+                airLine << std::fixed << std::setprecision(2) << airElapsed;
+            drawAt(airLine.str(), ax, ay, asize);
+
+            if (bestCvar) {
+                std::ostringstream b;
+                b << "Best: " << std::fixed << std::setprecision(2) << bestCvar.getFloatValue();
+                drawAt(b.str(), ax, ay + 20.0f * asize, asize);
+            }
+        }
+    }
+
+    // ---- the reset counter (its own master enable) ----
+    CVarWrapper enabledCvar = cvarManager->getCvar(CV_ENABLED);
+    if (!enabledCvar || !enabledCvar.getBoolValue()) return;
+
+    CVarWrapper posXCvar  = cvarManager->getCvar(CV_POSX);
+    CVarWrapper posYCvar  = cvarManager->getCvar(CV_POSY);
+    CVarWrapper sizeCvar  = cvarManager->getCvar(CV_TEXTSIZE);
+    CVarWrapper decCvar   = cvarManager->getCvar(CV_HEIGHTDECIMAL);
+    CVarWrapper showResetsCvar = cvarManager->getCvar(CV_SHOWRESETS);
+    CVarWrapper showHeightCvar = cvarManager->getCvar(CV_SHOWHEIGHT);
+    CVarWrapper showTimeCvar   = cvarManager->getCvar(CV_SHOWTIME);
+    CVarWrapper showAvgCvar    = cvarManager->getCvar(CV_SHOWAVGTIME);
+    CVarWrapper heightBallCvar = cvarManager->getCvar(CV_HEIGHTBALL);
+    CVarWrapper heightCarCvar  = cvarManager->getCvar(CV_HEIGHTCAR);
+    if (!posXCvar || !posYCvar || !sizeCvar || !decCvar ||
+        !showResetsCvar || !showHeightCvar || !showTimeCvar || !showAvgCvar ||
+        !heightBallCvar || !heightCarCvar)
+        return;
+
+    float posX     = posXCvar.getFloatValue();
+    float posY     = posYCvar.getFloatValue();
+    float textSize = sizeCvar.getFloatValue();
+    bool  heightDecimal = decCvar.getBoolValue();
+    bool  showResets = showResetsCvar.getBoolValue();
+    bool  showHeight = showHeightCvar.getBoolValue();
+    bool  showTime   = showTimeCvar.getBoolValue();
+    bool  showAvg    = showAvgCvar.getBoolValue();
+    bool  heightBall = heightBallCvar.getBoolValue();
+    bool  heightCar  = heightCarCvar.getBoolValue();
 
     // Counter lines all share the counter block's position and text size.
     auto drawLine = [&](const std::string& text, float y) {
@@ -597,6 +734,65 @@ void ResetCounterImproved::RenderSettings()
         ImGui::SameLine();
         if (ImGui::Button("Reset PB"))
             pb.setValue(0);
+    }
+
+    ImGui::Separator();
+    ImGui::Text("Air dribble timer");
+
+    CVarWrapper airOn = cvarManager->getCvar(CV_AIR_ENABLED);
+    bool bAirOn = false;
+    if (airOn) {
+        bAirOn = airOn.getBoolValue();
+        if (ImGui::Checkbox("Enable air dribble timer", &bAirOn))
+            airOn.setValue(bAirOn);
+    }
+    if (bAirOn) {
+        ImGui::Indent();
+
+        // Bind helper: type a key and click to bind it to the arm command.
+        static char airKey[16] = "G";
+        ImGui::PushItemWidth(60.0f);
+        ImGui::InputText("Bind key", airKey, sizeof(airKey));
+        ImGui::PopItemWidth();
+        ImGui::SameLine();
+        if (ImGui::Button("Set bind"))
+            cvarManager->executeCommand(std::string("bind ") + airKey + " " + CMD_AIR);
+        ImGui::SameLine();
+        ImGui::TextDisabled("(press to start, press again to stop)");
+
+        CVarWrapper sh = cvarManager->getCvar(CV_AIR_STARTH);
+        if (sh) {
+            float v = sh.getFloatValue();
+            if (ImGui::SliderFloat("Start height (%)", &v, 0.0f, 100.0f))
+                sh.setValue(v);
+        }
+        CVarWrapper apx = cvarManager->getCvar(CV_AIR_POSX);
+        if (apx) {
+            float v = apx.getFloatValue();
+            if (ImGui::SliderFloat("Timer X", &v, 0.0f, 1920.0f))
+                apx.setValue(v);
+        }
+        CVarWrapper apy = cvarManager->getCvar(CV_AIR_POSY);
+        if (apy) {
+            float v = apy.getFloatValue();
+            if (ImGui::SliderFloat("Timer Y", &v, 0.0f, 1080.0f))
+                apy.setValue(v);
+        }
+        CVarWrapper asz = cvarManager->getCvar(CV_AIR_SIZE);
+        if (asz) {
+            float v = asz.getFloatValue();
+            if (ImGui::SliderFloat("Timer size", &v, 1.0f, 10.0f))
+                asz.setValue(v);
+        }
+        CVarWrapper airBest = cvarManager->getCvar(CV_AIR_BEST);
+        if (airBest) {
+            ImGui::Text("Best time: %.2f s", airBest.getFloatValue());
+            ImGui::SameLine();
+            if (ImGui::Button("Reset best"))
+                airBest.setValue(0.0f);
+        }
+
+        ImGui::Unindent();
     }
 
     ImGui::Separator();
