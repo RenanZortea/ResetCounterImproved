@@ -1,5 +1,12 @@
+// Reset Counter Improved — a BakkesMod flip-reset counter for Rocket League.
+//
+// Based on the original "Reset Counter Plugin" by Blaku
+// (https://bakkesplugins.com/plugin/178, https://github.com/blaku-rl). The
+// original was distributed compiled-only; this is an independent reimplementation
+// with expanded features. MIT licensed.
+
 #include "pch.h"
-#include "ResetCounterPlugin.h"
+#include "ResetCounterImproved.h"
 
 #include "bakkesmod/wrappers/GameWrapper.h"
 #include "bakkesmod/wrappers/GameObject/CarWrapper.h"
@@ -12,7 +19,7 @@
 #include <iomanip>
 #include <chrono>
 
-BAKKESMOD_PLUGIN(ResetCounterPlugin, "Reset Counter Plugin",
+BAKKESMOD_PLUGIN(ResetCounterImproved, "Reset Counter Improved",
                  "1.3", PLUGINTYPE_FREEPLAY)
 
 // ---------------------------------------------------------------------------
@@ -84,7 +91,7 @@ static const char* resetMessage(int n)
     return "godlike";
 }
 
-void ResetCounterPlugin::onLoad()
+void ResetCounterImproved::onLoad()
 {
     _globalCvarManager = cvarManager;
 
@@ -121,19 +128,19 @@ void ResetCounterPlugin::onLoad()
 
     // per-tick poll: SetVehicleInput fires every physics tick while you have a car
     gameWrapper->HookEvent("Function TAGame.Car_TA.SetVehicleInput",
-        std::bind(&ResetCounterPlugin::onTick, this, std::placeholders::_1));
+        std::bind(&ResetCounterImproved::onTick, this, std::placeholders::_1));
 
     // shot reset / new round / ball explode -> zero the chain
     gameWrapper->HookEvent("Function GameEvent_Soccar_TA.Active.StartRound",
-        std::bind(&ResetCounterPlugin::onRoundStart, this, std::placeholders::_1));
+        std::bind(&ResetCounterImproved::onRoundStart, this, std::placeholders::_1));
     gameWrapper->HookEvent("Function TAGame.Ball_TA.Explode",
-        std::bind(&ResetCounterPlugin::onRoundStart, this, std::placeholders::_1));
+        std::bind(&ResetCounterImproved::onRoundStart, this, std::placeholders::_1));
 
     gameWrapper->RegisterDrawable(
-        std::bind(&ResetCounterPlugin::render, this, std::placeholders::_1));
+        std::bind(&ResetCounterImproved::render, this, std::placeholders::_1));
 }
 
-void ResetCounterPlugin::onUnload()
+void ResetCounterImproved::onUnload()
 {
     gameWrapper->UnregisterDrawables();
 }
@@ -141,7 +148,7 @@ void ResetCounterPlugin::onUnload()
 // ---------------------------------------------------------------------------
 // core: poll the game's wheels-on-ball timestamp each tick
 // ---------------------------------------------------------------------------
-void ResetCounterPlugin::onTick(std::string)
+void ResetCounterImproved::onTick(std::string)
 {
     if (!gameWrapper->IsInFreeplay() && !gameWrapper->IsInCustomTraining())
         return;
@@ -255,12 +262,12 @@ void ResetCounterPlugin::onTick(std::string)
     }
 }
 
-void ResetCounterPlugin::onRoundStart(std::string)
+void ResetCounterImproved::onRoundStart(std::string)
 {
     resetCounter();
 }
 
-void ResetCounterPlugin::resetCounter()
+void ResetCounterImproved::resetCounter()
 {
     resetCount     = 0;
     lastCarHeight  = 0.0f;
@@ -276,7 +283,7 @@ void ResetCounterPlugin::resetCounter()
 // ---------------------------------------------------------------------------
 // HUD
 // ---------------------------------------------------------------------------
-void ResetCounterPlugin::render(CanvasWrapper canvas)
+void ResetCounterImproved::render(CanvasWrapper canvas)
 {
     CVarWrapper enabledCvar = cvarManager->getCvar(CV_ENABLED);
     if (!enabledCvar) return;
@@ -431,9 +438,9 @@ void ResetCounterPlugin::render(CanvasWrapper canvas)
 // ---------------------------------------------------------------------------
 // settings window
 // ---------------------------------------------------------------------------
-std::string ResetCounterPlugin::GetPluginName() { return "Reset Counter Plugin"; }
+std::string ResetCounterImproved::GetPluginName() { return "Reset Counter Improved"; }
 
-void ResetCounterPlugin::SetImGuiContext(uintptr_t ctx)
+void ResetCounterImproved::SetImGuiContext(uintptr_t ctx)
 {
     // BakkesMod hands us its ImGui context here. We MUST adopt it, otherwise
     // every ImGui call in RenderSettings() runs on a null context and the game
@@ -441,7 +448,7 @@ void ResetCounterPlugin::SetImGuiContext(uintptr_t ctx)
     ImGui::SetCurrentContext(reinterpret_cast<ImGuiContext*>(ctx));
 }
 
-void ResetCounterPlugin::RenderSettings()
+void ResetCounterImproved::RenderSettings()
 {
     // Simple MVP settings: enable toggle, position/size, a couple of style
     // options, and a manual reset. Each control is guarded by a null check.

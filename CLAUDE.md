@@ -1,4 +1,4 @@
-# ResetCounterPlugin — project context for Claude Code
+# ResetCounterImproved — project context for Claude Code
 
 ## What this is
 A **BakkesMod plugin for Rocket League** that counts *flip resets* (wheels-on-ball
@@ -59,15 +59,15 @@ currently uses a single `resetcounter_color`. Re-adding the per-element colors i
 known TODO if full visual parity is wanted.
 
 ## Files
-- `ResetCounterPlugin/ResetCounterPlugin.{h,cpp}` — the plugin (our logic).
-- `ResetCounterPlugin/pch.{h,cpp}` — precompiled header; **defines the global
+- `ResetCounterImproved/ResetCounterImproved.{h,cpp}` — the plugin (our logic).
+- `ResetCounterImproved/pch.{h,cpp}` — precompiled header; **defines the global
   `_globalCvarManager`** (declared `extern` in pch.h, defined once in pch.cpp). The
   template's GuiBase/logging helpers depend on this global existing.
-- `ResetCounterPlugin/GuiBase.{h,cpp}`, `IMGUI/*` — from the Martinii89 BakkesMod
+- `ResetCounterImproved/GuiBase.{h,cpp}`, `IMGUI/*` — from the Martinii89 BakkesMod
   plugin template; do not hand-edit unless necessary.
-- `ResetCounterPlugin/ResetCounterPlugin.vcxproj` — VS project. `.bak` is the pre-edit
+- `ResetCounterImproved/ResetCounterImproved.vcxproj` — VS project. `.bak` is the pre-edit
   backup.
-- Build output DLL: `ResetCounterPlugin/plugins/ResetCounterPlugin.dll`. The post-build
+- Build output DLL: `ResetCounterImproved/plugins/ResetCounterImproved.dll`. The post-build
   step also copies it to `%APPDATA%\bakkesmod\bakkesmod\plugins\`.
 
 ## Build (IMPORTANT — environment quirks)
@@ -88,11 +88,11 @@ MSBuild alone fails to resolve the VC toolset paths; run it through the dev envi
 
 ```
 cmd /c ""D:\VisualStudio\VC\Auxiliary\Build\vcvars64.bat" && msbuild ^
-  "%USERPROFILE%\Desktop\ResetCounterPlugin\ResetCounterPlugin\ResetCounterPlugin.vcxproj" ^
+  "%USERPROFILE%\Desktop\ResetCounterPlugin\ResetCounterImproved\ResetCounterImproved.vcxproj" ^
   /p:Configuration=Release /p:Platform=x64 /m"
 ```
 
-(In the IDE: open `ResetCounterPlugin.slnx` / the `.vcxproj`, Release | x64, Build.
+(In the IDE: open `ResetCounterImproved.slnx` / the `.vcxproj`, Release | x64, Build.
 The Build menu is hidden if VS opens the folder in "Open Folder" mode instead of the
 project — open the `.vcxproj`/solution, not the folder.)
 
@@ -101,14 +101,14 @@ BakkesMod holds the loaded DLL open, so the post-build copy fails with
 `os error 32 (file in use)` while the plugin is loaded — **this is not a build failure;
 the DLL still builds.** To update a running game:
 
-1. BakkesMod console (F6): `plugin unload resetcounterplugin`
-2. Copy `ResetCounterPlugin\plugins\ResetCounterPlugin.dll` →
-   `%APPDATA%\bakkesmod\bakkesmod\plugins\ResetCounterPlugin.dll`
-3. `plugin load resetcounterplugin`
+1. BakkesMod console (F6): `plugin unload resetcounterimproved`
+2. Copy `ResetCounterImproved\plugins\ResetCounterImproved.dll` →
+   `%APPDATA%\bakkesmod\bakkesmod\plugins\ResetCounterImproved.dll`
+3. `plugin load resetcounterimproved`
 
-If the official 1.1 plugin from bakkesplugins is also installed, it produces the same
-`ResetCounterPlugin.dll` filename — our build overwrites it. Rename the
-`BAKKESMOD_PLUGIN(...)` first arg + DLL if you want them side by side.
+Because this build is now named `ResetCounterImproved.dll` (class `ResetCounterImproved`,
+display name "Reset Counter Improved"), it no longer collides with Blaku's official
+`ResetCounterPlugin.dll` — both can be installed side by side.
 
 ## Caveats / known issues
 - **ABI:** built with v145 while the SDK `pluginsdk.lib` targets v143. It links and loads

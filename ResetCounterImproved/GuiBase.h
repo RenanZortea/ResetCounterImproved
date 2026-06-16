@@ -15,7 +15,7 @@ public:
 	virtual ~PluginWindowBase() = default;
 
 	bool isWindowOpen_ = false;
-	std::string menuTitle_ = "ResetCounterPlugin";
+	std::string menuTitle_ = "ResetCounterImproved";
 
 	std::string GetMenuName() override;
 	std::string GetMenuTitle() override;

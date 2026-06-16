@@ -1,11 +1,15 @@
-# Reset Counter Plugin
+# Reset Counter Improved
 
 A [BakkesMod](https://bakkesmod.com/) plugin for Rocket League that counts **flip
 resets** (wheels-on-ball contacts while airborne) during freeplay and custom
 training, and shows a small, customizable HUD.
 
-This is a clean reimplementation of the community "Reset Counter Plugin 1.1",
-rewritten with accurate detection and a number of new features.
+This is an independent reimplementation of the community **Reset Counter Plugin**
+by **Blaku** ([bakkesplugins.com/plugin/178](https://bakkesplugins.com/plugin/178),
+[github.com/blaku-rl](https://github.com/blaku-rl)). The original was distributed
+compiled-only; this version was rebuilt from scratch with accurate flip-reset
+detection and a number of new features. Full credit for the original idea and the
+`resetcounter_*` cvar interface goes to Blaku.
 
 ## Features
 
@@ -52,19 +56,26 @@ rewritten with accurate detection and a number of new features.
 
 Requires Visual Studio with the C++ desktop workload and the BakkesMod SDK
 installed (BakkesMod copies its SDK to
-`%APPDATA%\bakkesmod\bakkesmod\bakkesmodsdk`). Open `ResetCounterPlugin.slnx`
+`%APPDATA%\bakkesmod\bakkesmod\bakkesmodsdk`). Open `ResetCounterImproved.slnx`
 (or the `.vcxproj`), select **Release | x64**, and build. The post-build step
 copies the DLL into your BakkesMod `plugins` folder automatically.
 
-See [`ResetCounterPlugin/BUILD_AND_INSTALL.md`](ResetCounterPlugin/BUILD_AND_INSTALL.md)
+See [`ResetCounterImproved/BUILD_AND_INSTALL.md`](ResetCounterImproved/BUILD_AND_INSTALL.md)
 for details and environment notes.
 
 ## Installing a built DLL manually
 
-1. In the BakkesMod console (F6): `plugin unload resetcounterplugin`
-2. Copy `ResetCounterPlugin/plugins/ResetCounterPlugin.dll` to
+1. In the BakkesMod console (F6): `plugin unload resetcounterimproved`
+2. Copy `ResetCounterImproved/plugins/ResetCounterImproved.dll` to
    `%APPDATA%\bakkesmod\bakkesmod\plugins\`
-3. `plugin load resetcounterplugin`
+3. `plugin load resetcounterimproved`
+
+## Credits
+
+- Original **Reset Counter Plugin** concept and `resetcounter_*` cvar interface by
+  **Blaku** — [bakkesplugins.com/plugin/178](https://bakkesplugins.com/plugin/178)
+  · [github.com/blaku-rl](https://github.com/blaku-rl).
+- This reimplementation and the added features by Renan Zortea.
 
 ## License
 

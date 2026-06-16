@@ -75,7 +75,7 @@
     <ClCompile Include="pch.cpp">
       <Filter>PCH</Filter>
     </ClCompile>
-    <ClCompile Include="ResetCounterPlugin.cpp">
+    <ClCompile Include="ResetCounterImproved.cpp">
       <Filter>Plugin\src</Filter>
     </ClCompile>
     <ClCompile Include="GuiBase.cpp">
@@ -131,7 +131,7 @@
     <ClInclude Include="pch.h">
       <Filter>PCH</Filter>
     </ClInclude>
-    <ClInclude Include="ResetCounterPlugin.h">
+    <ClInclude Include="ResetCounterImproved.h">
       <Filter>Plugin\header</Filter>
     </ClInclude>
     <ClInclude Include="logging.h">

@@ -8,12 +8,14 @@
 #include <string>
 #include <chrono>
 
-// Reset Counter Plugin (reconstructed + extended)
+// Reset Counter Improved (independent reimplementation + extended)
 // Counts wheels-on-ball "flip resets" in a freeplay/freestyle chain, using the
 // game's own GetLastWheelsHitBallTime() signal. Landing zeroes the chain.
 // Adds console command: resetcounter_resetcounter (bindable) to zero on demand.
+// Based on the original "Reset Counter Plugin" by Blaku
+// (https://bakkesplugins.com/plugin/178, https://github.com/blaku-rl).
 
-class ResetCounterPlugin :
+class ResetCounterImproved :
     public BakkesMod::Plugin::BakkesModPlugin,
     public BakkesMod::Plugin::PluginSettingsWindow
 {

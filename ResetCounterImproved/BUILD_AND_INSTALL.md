@@ -1,4 +1,4 @@
-# Reset Counter Plugin (custom build) — Build & Install
+# Reset Counter Improved — Build & Install
 
 You now have your own copy of the plugin source with one added console command:
 
@@ -13,8 +13,8 @@ reloads and follows the `resetcounter_*` naming pattern, exactly as requested.
 
 ## 0. What you have
 
-- `ResetCounterPlugin.h` — class declaration
-- `ResetCounterPlugin.cpp` — all logic (cvars, hooked events, the new notifier, HUD)
+- `ResetCounterImproved.h` — class declaration
+- `ResetCounterImproved.cpp` — all logic (cvars, hooked events, the new notifier, HUD)
 - `pch.h` — precompiled header
 
 This is a **clean reimplementation** based on the original 1.1 binary's verified cvars and
@@ -42,12 +42,12 @@ and sets the correct **x64 / Release** config and the post-build copy step.
 ## 2. Create the project
 
 1. In Visual Studio: **File → New → Project → BakkesMod Plugin Template**.
-2. Name it `ResetCounterPlugin`.
+2. Name it `ResetCounterImproved`.
 3. Once it generates, **replace** the template's `.h`, `.cpp`, and `pch.h` with the three
    files in this folder. (Keep the template's `.vcxproj`, `pch.cpp`, and any
    `*GeneratedSettings*` it created.)
 
-> If your template generated a settings file like `ResetCounterPluginGeneratedSettings.h`,
+> If your template generated a settings file like `ResetCounterImprovedGeneratedSettings.h`,
 > leave it; it's harmless. The `RenderSettings()` here is self-contained.
 
 ---
@@ -58,14 +58,13 @@ and sets the correct **x64 / Release** config and the post-build copy step.
 2. **Build → Build Solution** (Ctrl+Shift+B).
 3. The template's post-build step copies the DLL to:
    ```
-   %APPDATA%\bakkesmod\bakkesmod\plugins\ResetCounterPlugin.dll
+   %APPDATA%\bakkesmod\bakkesmod\plugins\ResetCounterImproved.dll
    ```
    If your template has no post-build copy, copy it there manually.
 
-> IMPORTANT: unload the original first. If the official "Reset Counter Plugin" is installed
-> from bakkesplugins, it also produces `ResetCounterPlugin.dll`. Either overwrite it, or
-> rename your `BAKKESMOD_PLUGIN(...)` first arg + the DLL to avoid a clash (e.g.
-> `ResetCounterPluginCustom`). If you rename, the load command in Section 4 changes to match.
+> This build is named `ResetCounterImproved.dll` (display name "Reset Counter Improved"),
+> so it does NOT clash with Blaku's official `ResetCounterPlugin.dll` — you can run both
+> side by side.
 
 ---
 
@@ -74,8 +73,8 @@ and sets the correct **x64 / Release** config and the post-build copy step.
 Open the BakkesMod console (**F6**) and run:
 
 ```
-plugin unload resetcounterplugin
-plugin load resetcounterplugin
+plugin unload resetcounterimproved
+plugin load resetcounterimproved
 ```
 
 Test the command directly:

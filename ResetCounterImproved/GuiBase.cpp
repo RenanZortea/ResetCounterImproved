@@ -3,7 +3,7 @@
 
 std::string SettingsWindowBase::GetPluginName()
 {
-	return "ResetCounterPlugin";
+	return "ResetCounterImproved";
 }
 
 void SettingsWindowBase::SetImGuiContext(uintptr_t ctx)
@@ -13,7 +13,7 @@ void SettingsWindowBase::SetImGuiContext(uintptr_t ctx)
 
 std::string PluginWindowBase::GetMenuName()
 {
-	return "ResetCounterPlugin";
+	return "ResetCounterImproved";
 }
 
 std::string PluginWindowBase::GetMenuTitle()
